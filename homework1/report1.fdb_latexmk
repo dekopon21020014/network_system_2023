@@ -1,15 +1,15 @@
 # Fdb version 4
-["dvipdf"] 1697336795 "report1.dvi" "report1.pdf" "report1" 1697336795 0
-  "report1.dvi" 1697336794 1276 22600a0074992e085e93f8e1e4a417af "latex"
+["dvipdf"] 1697440083 "report1.dvi" "report1.pdf" "report1" 1697440085 0
+  "report1.dvi" 1697440083 11732 6344865781b4304732ce968aee661c74 "latex"
   (generated)
   "report1.pdf"
   (rewritten before read)
-["latex"] 1697336794 "report1.tex" "report1.dvi" "report1" 1697336795 0
+["latex"] 1697440082 "report1.tex" "report1.dvi" "report1" 1697440085 0
   "/usr/local/texlive/2022/texmf-dist/tex/latex/l3backend/l3backend-dvipdfmx.def" 1673989714 30501 3598a65dcfed333b0bc82f80315f9831 ""
   "/usr/local/texlive/2022/texmf-dist/tex/platex/jsclasses/jsarticle.cls" 1676235677 61383 ebb1fb3fb2f4305606ce685f0a4dea4b ""
   "/usr/local/texlive/2022/texmf-dist/tex/platex/jsclasses/jslogo.sty" 1601931076 5585 8e4615c54073c390d14154b29cee89cb ""
-  "report1.aux" 1697336794 132 614d64e44293cdbfb1b9c3a57d0bad96 "latex"
-  "report1.tex" 1697336789 695 415117ec2dce3c9ef25dce75bdbec810 ""
+  "report1.aux" 1697440083 596 fc3714e94e544066e4fef864124d3e77 "latex"
+  "report1.tex" 1697440078 8091 159a0706263dd540e1d3f472d1430765 ""
   (generated)
   "report1.aux"
   "report1.dvi"

@@ -11,13 +11,120 @@
   この文書は2023年度の情報通信システム論レポート課題である．
   ``現在利用している環境での byte order を判別するプログラムをC言語で作成せよ．''という課題で作成したプログラムの説明，実行例，考察，感想を記述する．
 }
-\section{はじめに}
+\section{課題の要件}
+作成するプログラムの要件は以下を満たすことである．
 
- %貢献内容
- 
-%参考文献
+\begin{itemize}
+  \item ライブラリーを用いて判別しない
+  \item 判別には unionを利用する
+  \item キャスト(型変換)は使用しない
+\end{itemize}
 
-%\newpage
-%\appendix
+\section{プログラムの説明}
+作成したプログラムを示す．なおヘッダファイルの読み込みは省略している
+
+\begin{quote}
+\begin{verbatim}
+----------------------main.c-----------------
+#define IP_ADDRESS 0xC0A80A01 // 192.168.10.1
+
+union u {
+    unsigned int ipaddr;
+    unsigned char doted_ipaddr[4];
+};
+
+int main(void) {
+	union u u1; 
+    u1.ipaddr = IP_ADDRESS; 
+    if(u1.doted_ipaddr[0] == 0xC0) {
+        printf("Byte order of your environment is Big Endian\n");
+    } else if(u1.doted_ipaddr[0] == 0x01) {
+        printf("Byte order of your environment is Little Endian\n");
+    }
+}
+---------------------------------------------
+
+\end{verbatim}
+\end{quote}
+uはメンバ変数として，unsigned int型のipaddrと，unsigned char型のdoted$\_$ipaddrを持つ．
+u1のipaddrにはIPアドレス192.168.10.1に対応する0xC0A80A01を代入している．
+uは共用体であるから，ipaddrとdoted$\_$ipaddrのメモリ領域は重複している．
+バイトオーダーがビッグエンディアンであれば，MSBからメモリに格納されるからdoted$\_$ipaddr+0番地にはMSBが格納される．
+すなわち，0xC0A80A01の0xC0が格納される．
+一方で，リトルエンディアンであればLSBからメモリに格納されるからdoted$\_$ipaddr+0番地には0xC0A80A01の0x01が格納される．
+プログラム中ではこれを用いて，u1.doted$\_$ipaddr[0]が0xc0であれば``Byte order of your environment is Big Endian''を，u1.doted$\_$ipaddr[0]が0x01であれば``Byte order of your environment is Little Endian''を標準出力で出力している．
+
+\section{プログラムの実行例}
+今回作成したプログラムを2.3 GHz クアッドコアIntel Core i5で実行したところ，``Byte order of your environment is Little Endian''が出力された．また，AWS EC2インスンスのt2.microにて実行したところ，同じく``Byte order of your environment is Little Endian''が出力された．
+
+\section{考察}
+BigEndianとリトルエンディアンについて．
+今回試した2つの環境ではリトルエンディアンが採用されていた．
+これは，どちらもIntelの(影響を受けた)プロセッサーを採用しているからだと思われる．
+一方で，IPにおけるバイトオーダーはビッグエンディアンである．すなわち，IPを用いた通信を行う場合には，リトルエンディアンをビッグエンディアンにして送信した後に，受信側で再度リトルエンディアンに復元している．
+これは，非常に無駄な処理であると考えられる．
+1度の処理はそこまで大きなものではないかもしれないが，サーバが送受信する，単位時間あたりのIPパケットは膨大であり，それらのパケット全てに対してそのような処理をすると，計算資源の無駄が起きている．
+
+CPUにはビッグエンディアンとリトルエンディアンが存在するが，これらの違いについて調べたところ，位取り記数法で考えた時に，リトルエンディアンの方がシンプルに考えられるという意見があった．
+そこで以下のようなプログラムを作成した．ただし，ヘッダファイルの読み込みは省略している．
+
+\begin{quote}
+\begin{verbatim}
+------------------------------------------------
+#define IP_ADDRESS 0xC0A80A01 // 192.168.10.1
+
+union u {
+    unsigned int ipaddr;
+    unsigned char doted_ipaddr[4];
+};
+
+int main(void) {
+	union u u1; 
+    u1.ipaddr = IP_ADDRESS; // 192.168.10.1
+
+	// リトルエンデアンのintを1byteずつアクセスして取得する
+    unsigned int sum1 = 0;
+	int i;
+    for(i = 0; i < sizeof(u1.doted_ipaddr); i++) {
+        sum1 += (unsigned int)(u1.doted_ipaddr[i] * pow(256, i));
+    }
+    printf("sum1 = %x\n", sum1);                                   
+
+    // ビッグエンディアンにする
+    union u u2;
+    u2.ipaddr = htonl(0xC0A80a01); // 192.168.10.1
+
+    // ビッグエンディアンのintを1byteずつアクセスして出力する
+    unsigned int sum2 = 0;
+    for(i = 0; i < sizeof(u2.doted_ipaddr); i++) {
+        sum2 += (unsigned int)(u2.doted_ipaddr[i] * pow(256, sizeof(u2.doted_ipaddr) - i));
+    }
+    printf("sum2 = %x\n", sum2);
+}
+------------------------------------------------
+\end{verbatim}
+\end{quote}
+リトルエンディアンは，LSBから格納する方法で，位取り記数法を用いて考える人間にとってはあまり直感的ではないが，ソースコード上では，``pow(256, i)''となっており，直感的に感じる．
+
+ビッグエンディアンは，MSBから格納し，人間にとって直感的に感じる一方で，``pow(256, sizeof(u2.doted$\_$ipaddr) - i)''となっており，ソースコード上ではあまり直感的ではない．
+
+このように，たしかに差はあるものの計算機上ではMSBとLSBどちらから格納するかは本室ではないし，どちらであっても性能は変わらないだろうと考える．
+ビッグエンディアンとリトルエンディアンの優劣ではなく，OSや通信プロトコル，組み込みソフトの設計時にには，2種類のエンディアンがあるということを意識して設計することが重要である．
+
+\section{感想}
+CPUのビッグエンディアン，リトルエンディアンの優劣について考えてみたが，自分としてはどちらも同じだろうという考えになった．
+一方で，2種類の方式が存在することは，低いレイヤーのプログラミングをしている人いにとっては悩ましい問題ではないかとも感じた．ビッグエンディアンとリトルエンディアンそれぞれにソフトウェアを対応させなければいけないのは大きなコストがかかるのではないかと思う．
+どちらかに統一できないのかとも感じるが，この辺りはCPUメーカーのビジネスマーケテイングに大きく関わっていると思うと，こんなんだろうと感じる．
+プロトコルも同様に，ビジネスが絡むと，お粗末なプロトコルがあたりまえに使われていたりして愚かだと感じる．
+
+授業で，ネットワークバイトオーダーについての話があったので少しインターネットで調べてみたところ，ビッグエンディアンを明記しているわけではないらしいということがわかった．
+しかし，IPについて規定している，RFC791\cite{bib:rfc791}のp.39において，実質的にIPがビッグエンディアンを採用していることを記しており，ネットワークバイトオーダーはビッグエンディアンとなっているようである．
+ビッグエンディアンを用いなければならないと明記されておらず，いい加減であると感じもしたが，RFCらしいとも感じた．
+
+\begin{thebibliography}{9}
+\bibitem{bib:rfc791}
+  IETF, ``RFC791'', https://datatracker.ietf.org/doc/html/rfc791, 2023/10/15閲覧
+  
+\end{thebibliography}
 
 \end{document}
