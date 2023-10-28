@@ -3,11 +3,18 @@
 #include <stdio.h>      /* fprintf, perror */
 #include <string.h>     /* memset, strlen */
 #include <netdb.h>      /* struct addrinfo, */
+#include <fcntl.h>
+#include <errno.h>
 
 // #include <sys/select.h> /* FD_ISSET, FD_SET, FD_ZERO, select */
 // #include <sys/types.h>  /* accept, bind, read, setsockopt, socket, write */
 // #include <sys/socket.h> /* accept, bind, listen, setsockopt, shutdown, socket */
 // #include <netinet/in.h>
+
+#define BUFFER_SIZE 1024
+
+int read_from (int, char*, int);
+
 
 int main (int argc, char *argv[]) {
     if(argc < 3) {
@@ -21,8 +28,8 @@ int main (int argc, char *argv[]) {
         exit(1);
     }
 
-    int sockfd, nbytes;
-    char buf[BUFSIZ]; /* 自分の環境ではBUFSIZ=1024っぽい */
+    int sockfd, read_size, written_size;
+    char buf[BUFFER_SIZE]; /* 自分の環境ではBUFSIZ=1024っぽい */
     int error;
     struct addrinfo hints, *res, *r;
     memset (&hints, 0, sizeof (hints)); /* 構造体の初期化 */
@@ -50,7 +57,7 @@ int main (int argc, char *argv[]) {
         fprintf (stderr, "couldn't create connection\nname: %s\nport: %s\n", argv[1], argv[2]);
         exit (1);
     }
-
+    
     for (;;) {
 		int maxfd;
 	    fd_set read_fds;
@@ -66,20 +73,67 @@ int main (int argc, char *argv[]) {
     	}
 
 	    if (FD_ISSET (sockfd, &read_fds)) {
-    	    if ((nbytes = read (sockfd, buf, sizeof (buf) - 1)) == 0) {
-        	    printf ("EOF\n"); break;
-        	}
-        	buf[nbytes] = '\0';
+            
+    	    if ((read_size = read (sockfd, buf, sizeof (buf) - 1)) == 0) {
+        	    fprintf (stderr, "EOF\n"); break;
+            }
+            
+            /*
+            printf("-------\n");
+            if ((read_size = read_from (sockfd, buf, sizeof (buf) - 1)) < 0) {
+                fprintf (stderr, "read EOF\n");
+                break;
+            }
+            */
+            printf ("read size = %d\n", read_size);
+            
+            printf("-------\n");
+        	buf[read_size] = '\0';
 			fputs (buf, stdout);
     	}
 
     	if (FD_ISSET (STDIN_FILENO, &read_fds)) {
-        	nbytes = read (STDIN_FILENO, buf, sizeof (buf) - 1);
-	        buf[nbytes] = '\0';            
-	        nbytes = write (sockfd, buf, strlen (buf));
+        	// read_size = read (STDIN_FILENO, buf, sizeof (buf) - 1);
+            if ((read_size = read_from (STDIN_FILENO, buf, sizeof (buf) - 1)) < 0) {
+                fprintf (stderr, "read EOF\n");
+                break;
+            }
+	        buf[read_size] = '\0';
+            printf ("buf is : %s\n", buf);
+	        written_size = write (sockfd, buf, sizeof (buf) - 1);
 	    }	
     }
 
     close(sockfd);
     return 0;
+}
+
+/* read(2)のラッパー */
+int read_from (int fd, char* buf, int size) {
+	int val;
+	val = fcntl (fd, F_GETFL);
+	fcntl (fd, F_SETFL, val | O_NONBLOCK);
+    
+    int read_size = 0;
+    int offset = 0;
+    int nbyte;
+	
+    for (;;) {
+        if (size == 0) break;
+    	if ((nbyte = read (fd, buf + offset, size)) == 0) {
+            read_size = -1;
+            fprintf (stderr, "here EOF\n");
+        	break;
+    	} else if (errno == EAGAIN) {
+            printf("eagain\n");
+            /* readするものがなかっただけ*/
+            break;
+        } else {
+            printf ("nbyte = %d\n", nbyte);
+            size   -= nbyte;
+        	offset += nbyte;
+            read_size += nbyte;
+        }
+    }
+    return read_size;
 }

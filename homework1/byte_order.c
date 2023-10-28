@@ -12,7 +12,7 @@ union u {
 };
 
 int main(void) {
-	union u u1; 
+    union u u1; 
     u1.ipaddr = IP_ADDRESS; // 192.168.10.1
     printf("==================================================\n");
     if(u1.doted_ipaddr[0] == 0xC0) {
@@ -23,6 +23,7 @@ int main(void) {
     printf("==================================================\n");
 
     /*
+    // ここから下はただの確認
     // どうせリトルエンディアンだろうという確認
     printf("decimal: %d\n", u1.ipaddr);
     printf("hex: %x\n", u1.ipaddr);
@@ -31,7 +32,8 @@ int main(void) {
            						   u1.doted_ipaddr[2],
            						   u1.doted_ipaddr[3]);
 
-	// リトルエンデアンのintを1byteずつアクセスして取得する
+
+    // リトルエンデアンのintを1byteずつアクセスして取得する
     unsigned int sum1 = 0;
 	int i;
     for(i = 0; i < sizeof(u1.doted_ipaddr); i++) {
