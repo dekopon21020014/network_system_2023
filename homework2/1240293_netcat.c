@@ -2,7 +2,7 @@
 //#define INETPTON /* inet_ptonで実装 */
 #define FDOPEN /* FDOPENで実装 */
 
-
+/* シンプルにgetaddrinfo使うけど，入出力はread(2), write(w)*/
 #ifdef GETADDRINFO
 #include <unistd.h>     /* close, read, write */
 #include <stdlib.h>     /* exit */
@@ -131,6 +131,8 @@ int read_from (int fd, char* buf, int size) {
 }
 #endif
 
+
+/* inetptonを使っているから名前解決ができない．入出力はread(2), write(2)*/
 #ifdef INETPTON
 #include <arpa/inet.h>  /* htons */
 #include <stdio.h>      /* fprintf, perror */
@@ -211,6 +213,7 @@ int main (int argc, char *argv[]) {
 
 #endif
 
+/* getaddrinfoを使うかつ，入出力は標準入出力ライブラリでやる*/
 #ifdef FDOPEN
 #include <unistd.h>     /* close, read, write */
 #include <stdlib.h>     /* exit */
