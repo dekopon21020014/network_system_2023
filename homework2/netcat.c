@@ -42,35 +42,35 @@ int main (int argc, char *argv[]) {
     if (connect (sockfd, (struct sockaddr *)&servaddr, sizeof (servaddr)) < 0) {
         perror ("connect\n"); exit (1);        
     }
+	for (;;) {
+        int maxfd;
+        fd_set read_fds, write_fds;
 
-	int maxfd;
-    fd_set read_fds, write_fds;
-
-    FD_ZERO (&read_fds);
-    FD_SET (STDIN_FILENO, &read_fds);
-    FD_SET (sockfd,       &read_fds);
-    maxfd = sockfd;
+        FD_ZERO (&read_fds);
+        FD_SET (STDIN_FILENO, &read_fds);
+        FD_SET (sockfd,       &read_fds);
+        maxfd = sockfd;
         
-    if (select (maxfd+1, &read_fds, &write_fds, NULL, NULL) < 0) {
-        perror("select");
-        exit(1);
-    }
-
-    if (FD_ISSET (sockfd, &read_fds)) {
-        if ((nbytes = read (sockfd, buf, sizeof (buf) - 1)) == 0) {
-            printf ("EOF\n");
-            return 0;
+        if (select (maxfd+1, &read_fds, &write_fds, NULL, NULL) < 0) {
+            perror("select");
+            exit(1);
         }
-        buf[nbytes] = '\0';
-		fputs (buf, stdout);
+
+        if (FD_ISSET (sockfd, &read_fds)) {
+            if ((nbytes = read (sockfd, buf, sizeof (buf) - 1)) == 0) {
+                printf ("EOF\n");
+                return 0;
+            }
+            buf[nbytes] = '\0';
+            fputs (buf, stdout);
+        }
+    
+        if (FD_ISSET (STDIN_FILENO, &read_fds)) {
+            nbytes = read (STDIN_FILENO, buf, sizeof (buf) - 1);
+            buf[nbytes] = '\0';            
+            nbytes = write (sockfd, buf, strlen (buf));
+        }	
     }
-    
-    if (FD_ISSET (STDIN_FILENO, &read_fds)) {
-        nbytes = read (STDIN_FILENO, buf, sizeof (buf) - 1);
-        buf[nbytes] = '\0';            
-        nbytes = write (sockfd, buf, strlen (buf));
-    }	
-    
     close(sockfd);
     return 0;
 }
